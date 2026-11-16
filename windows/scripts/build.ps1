@@ -10,7 +10,9 @@
   Also copy the exe to %LOCALAPPDATA%\Programs\Claude Usage, add a Start menu shortcut, and launch it.
 
 .EXAMPLE
-  windows/scripts/build.ps1 -Install
+  scripts\build.cmd -Install
+
+  (build.cmd runs this script with the execution policy bypassed, since Windows blocks .ps1 files by default.)
 #>
 param(
     [switch]$SelfContained,

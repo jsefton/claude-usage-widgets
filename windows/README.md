@@ -25,23 +25,25 @@ Windows 11's taskbar can't show text the way the macOS menu bar does. That's why
 
 ## Build and run
 
-Run these in PowerShell from this `windows/` folder:
+Run these from this `windows/` folder, in PowerShell or Command Prompt:
 
 ```powershell
 cd windows
 
 # Build it, install it to %LOCALAPPDATA%\Programs\Claude Usage, add a Start menu shortcut, and launch it
-scripts/build.ps1 -Install
+scripts\build.cmd -Install
 
-# ...or just build a single exe at build/ClaudeUsage.exe
-scripts/build.ps1
+# ...or just build a single exe at build\ClaudeUsage.exe
+scripts\build.cmd
 
 # Bundle the .NET runtime too (about 70 MB), for PCs without .NET 10
-scripts/build.ps1 -SelfContained
+scripts\build.cmd -SelfContained
 
 # Quick run from source while developing ("Launch at login" would point at the bin folder)
 dotnet run --project src/ClaudeUsageTray
 ```
+
+`build.cmd` runs `build.ps1` with PowerShell's execution policy bypassed for that one run. Windows blocks `.ps1` scripts by default ("running scripts is disabled on this system"), so this avoids changing a system setting. If you've already allowed scripts (for example with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`), you can run `scripts\build.ps1` directly with the same options.
 
 > **Tip:** Windows 11 puts new tray icons in the hidden `^` overflow. To keep the icon on the taskbar, drag it out of the overflow, or turn it on in **Settings → Personalization → Taskbar → Other system tray icons**. The floating widget is on by default so you can see the figures straight away. You can turn it off once the tray icon is pinned.
 
@@ -53,7 +55,7 @@ Run the tests (they cover pricing, the 8 AM day window including DST changes, lo
 dotnet test
 ```
 
-The app icon is drawn by `scripts/make-icon.ps1`, using the same gauge design as the macOS icon. After changing the design, run it again to regenerate `src/ClaudeUsageTray/AppIcon.ico`.
+The app icon is drawn by `scripts/make-icon.ps1`, using the same gauge design as the macOS icon. After changing the design, run `scripts\make-icon.cmd` to regenerate `src/ClaudeUsageTray/AppIcon.ico`.
 
 To render the panel, widget and tray badges in light and dark mode to PNG files without showing anything on screen, run `ClaudeUsage.exe --snapshot <folder>`. This is handy for checking layout changes.
 
@@ -70,7 +72,7 @@ Settings are saved to `%APPDATA%\ClaudeUsage\settings.json`.
 | Data folder | `%USERPROFILE%\.claude` and `%USERPROFILE%\.config\claude` | Comma-separated list of Claude config folders, if you use `CLAUDE_CONFIG_DIR`. |
 | Show floating widget | on | Hidden automatically while a full-screen app (game, video, presentation) is in front. |
 | Show Claude plan usage | on | Fetches monthly spend and plan limits from Claude using Claude Code's login. Turn off for no network access. |
-| Launch at login | off | Adds the app to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Turn it on from the installed copy (`scripts/build.ps1 -Install`). |
+| Launch at login | off | Adds the app to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Turn it on from the installed copy (`scripts\build.cmd -Install`). |
 
 ## Where the numbers come from
 
@@ -104,5 +106,6 @@ src/UsageCore/          Platform-neutral logic (pricing, day window, log scannin
 src/ClaudeUsageTray/    The WPF tray app: tray icon, floating widget, panel, settings.
 tests/UsageCore.Tests/  xUnit tests, ported from the macOS app's XCTest suite.
 scripts/build.ps1       Publishes a single-file exe to build/ (and optionally installs it).
-scripts/make-icon.ps1   Draws AppIcon.ico.
+scripts/build.cmd       Runs build.ps1 without needing to change PowerShell's execution policy.
+scripts/make-icon.ps1   Draws AppIcon.ico (make-icon.cmd runs it the same way).
 ```

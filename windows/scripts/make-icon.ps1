@@ -8,7 +8,9 @@
   Run it again after changing the design; the .ico is committed.
 
 .EXAMPLE
-  windows/scripts/make-icon.ps1
+  scripts\make-icon.cmd
+
+  (make-icon.cmd runs this script with the execution policy bypassed, since Windows blocks .ps1 files by default.)
 #>
 param(
     [string]$OutFile = (Join-Path $PSScriptRoot '..\src\ClaudeUsageTray\AppIcon.ico')
