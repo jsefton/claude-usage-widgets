@@ -7,10 +7,11 @@ enum SettingsKey {
     static let resetHour = "resetHour"
     static let displayMode = "displayMode"
     static let customDataDir = "customDataDir"
+    static let showPlanUsage = "showPlanUsage"
 }
 
 enum Defaults {
-    static let dailyBudget = 50.0
+    static let dailyBudget = 25.0
     static let resetHour = 8
 }
 
@@ -33,6 +34,14 @@ final class UsageStore: ObservableObject {
     @Published private(set) var lastUpdated: Date?
     @Published private(set) var isRefreshing = false
     @Published private(set) var dataDirectoryFound = true
+
+    /// Usage reported by Claude for the signed-in account (monthly spend, plan limits).
+    @Published private(set) var plan: PlanUsage?
+    @Published private(set) var planError: String?
+    private var planFetchedAt: Date?
+    private var isFetchingPlan = false
+    /// How often to ask Claude for plan usage (Claude Code itself polls about every 5 minutes).
+    private let planInterval: TimeInterval = 300
 
     private var timer: Timer?
     private var pendingRefresh = false
@@ -57,6 +66,10 @@ final class UsageStore: ObservableObject {
         UserDefaults.standard.object(forKey: SettingsKey.resetHour) as? Int ?? Defaults.resetHour
     }
 
+    var showPlanUsage: Bool {
+        UserDefaults.standard.object(forKey: SettingsKey.showPlanUsage) as? Bool ?? true
+    }
+
     var roots: [URL] {
         let custom = (UserDefaults.standard.string(forKey: SettingsKey.customDataDir) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,7 +81,10 @@ final class UsageStore: ObservableObject {
         return UsageScanner.defaultRoots()
     }
 
-    func refresh() {
+    /// Refreshes the local daily total, and the plan usage from Claude when it is due.
+    /// - Parameter force: fetch plan usage now (still at most every 30 seconds), e.g. the refresh button.
+    func refresh(force: Bool = false) {
+        refreshPlan(force: force)
         guard !isRefreshing else { pendingRefresh = true; return }
         isRefreshing = true
         let period = UsagePeriod.current(resetHour: resetHour)
@@ -92,9 +108,52 @@ final class UsageStore: ObservableObject {
     }
 }
 
+extension UsageStore {
+    func refreshPlan(force: Bool = false) {
+        guard showPlanUsage else {
+            plan = nil
+            planError = nil
+            planFetchedAt = nil
+            return
+        }
+        guard !isFetchingPlan else { return }
+        if let fetched = planFetchedAt,
+           Date().timeIntervalSince(fetched) < (force ? 30 : planInterval) { return }
+
+        isFetchingPlan = true
+        Task {
+            do {
+                let usage = try await ClaudeAccount.fetchPlanUsage()
+                plan = usage
+                planError = nil
+            } catch let error as ClaudeAccount.FetchError {
+                planError = error.message
+            } catch {
+                planError = error.localizedDescription
+            }
+            planFetchedAt = Date()
+            isFetchingPlan = false
+        }
+    }
+}
+
 enum Format {
     static func cost(_ value: Double) -> String {
         String(format: "$%.2f", value)
+    }
+
+    static func money(_ value: Double, currency: String, decimalPlaces: Int = 2) -> String {
+        value.formatted(
+            .currency(code: currency).precision(.fractionLength(decimalPlaces))
+        )
+    }
+
+    /// "20:30" for times in the next 24 hours, otherwise "Wed 18 Nov".
+    static func reset(_ date: Date) -> String {
+        if date.timeIntervalSinceNow < 24 * 3600 {
+            return date.formatted(date: .omitted, time: .shortened)
+        }
+        return date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
     }
 
     static func percent(_ value: Double) -> String {

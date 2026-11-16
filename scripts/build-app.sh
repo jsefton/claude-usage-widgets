@@ -12,6 +12,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/ClaudeUsageBar"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 # Ad-hoc sign so macOS will launch it locally and allow the login item.
 codesign --force --sign - "$APP"
@@ -20,6 +21,8 @@ echo "Built $APP"
 if [[ "${1:-}" == "--install" ]]; then
   rm -rf "/Applications/Claude Usage.app"
   cp -R "$APP" /Applications/
+  # Nudge Finder/Spotlight to pick up the (possibly new) icon.
+  touch "/Applications/Claude Usage.app"
   echo "Installed to /Applications/Claude Usage.app"
   open "/Applications/Claude Usage.app"
 fi

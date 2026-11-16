@@ -8,6 +8,7 @@ struct MenuContentView: View {
     @EnvironmentObject private var store: UsageStore
     @AppStorage(SettingsKey.dailyBudget) private var dailyBudget = Defaults.dailyBudget
     @AppStorage(SettingsKey.resetHour) private var resetHour = Defaults.resetHour
+    @AppStorage(SettingsKey.showPlanUsage) private var showPlanUsage = true
     @State private var showSettings = false
 
     var body: some View {
@@ -20,6 +21,10 @@ struct MenuContentView: View {
             }
             if let summary = store.summary {
                 costSection(summary)
+                if showPlanUsage {
+                    Divider()
+                    planSection
+                }
                 Divider()
                 tokenSection(summary)
                 if !summary.byModel.isEmpty {
@@ -30,13 +35,22 @@ struct MenuContentView: View {
                 ProgressView().frame(maxWidth: .infinity)
             }
             Divider()
-            DisclosureGroup("Settings", isExpanded: $showSettings) {
+            DisclosureGroup(isExpanded: $showSettings) {
                 SettingsView().padding(.top, 6)
+            } label: {
+                // Make the whole "Settings" row clickable, not just the chevron.
+                // No withAnimation here: animating the height change inside a MenuBarExtra
+                // window leaves the panel mis-sized and mis-positioned, clipping the content.
+                Text("Settings")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { showSettings.toggle() }
             }
             footer
         }
         .padding(14)
         .frame(width: 320)
+        .background(PinTopEdge())
         .onAppear { store.refresh() }
     }
 
@@ -69,6 +83,89 @@ struct MenuContentView: View {
             Text("of \(Format.cost(dailyBudget)) daily budget")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    /// Usage as Claude reports it for the signed-in account: monthly spend and plan limits.
+    @ViewBuilder
+    private var planSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Claude plan").font(.caption).foregroundStyle(.secondary)
+            if let plan = store.plan {
+                if let monthly = plan.monthly {
+                    monthlyRow(monthly)
+                }
+                ForEach(plan.limits) { limit in
+                    meterRow(
+                        title: limit.label,
+                        value: Format.percent(limit.percent),
+                        percent: limit.percent,
+                        severity: limit.severity,
+                        footnote: limit.resetsAt.map { "Resets \(Format.reset($0))" }
+                    )
+                }
+                if plan.monthly == nil && plan.limits.isEmpty {
+                    Text("No plan limits reported for this account.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else if store.planError == nil {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity)
+            }
+            if let error = store.planError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func monthlyRow(_ monthly: MonthlySpend) -> some View {
+        let used = Format.money(monthly.used, currency: monthly.currency, decimalPlaces: monthly.decimalPlaces)
+        let value: String
+        if let limit = monthly.limit {
+            value = "\(used) of \(Format.money(limit, currency: monthly.currency, decimalPlaces: monthly.decimalPlaces))"
+        } else {
+            value = used
+        }
+        var notes: [String] = []
+        if let resets = monthly.resetsAt { notes.append("Resets \(Format.reset(resets))") }
+        if !monthly.isEnabled {
+            notes.append(monthly.disabledReason == "out_of_credits" ? "Off: out of credits" : "Off")
+        }
+        return meterRow(
+            title: "Monthly spend",
+            value: value,
+            percent: monthly.percent,
+            severity: monthly.severity,
+            footnote: notes.isEmpty ? nil : notes.joined(separator: " · "),
+            showsPercent: true
+        )
+    }
+
+    private func meterRow(
+        title: String, value: String, percent: Double?, severity: String?, footnote: String?, showsPercent: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                Spacer()
+                Text(value).monospacedDigit()
+                if let percent, showsPercent {
+                    Text(Format.percent(percent))
+                        .monospacedDigit()
+                        .foregroundStyle(color(for: percent, severity: severity))
+                }
+            }
+            .font(.callout)
+            if let percent {
+                ProgressView(value: min(max(percent, 0) / 100, 1))
+                    .tint(color(for: percent, severity: severity))
+                    .controlSize(.small)
+            }
+            if let footnote {
+                Text(footnote).font(.caption).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -109,7 +206,7 @@ struct MenuContentView: View {
             }
             Spacer()
             Button {
-                store.refresh()
+                store.refresh(force: true)
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -123,6 +220,16 @@ struct MenuContentView: View {
         GridRow {
             Text(title).foregroundStyle(.secondary)
             Text(value).monospacedDigit()
+        }
+    }
+
+    /// Uses the server's severity when it gives one, otherwise the same thresholds as the daily bar.
+    private func color(for percent: Double, severity: String?) -> Color {
+        switch severity {
+        case "critical": return .red
+        case "warning": return .orange
+        case "normal": return .green
+        default: return color(for: percent)
         }
     }
 
@@ -141,6 +248,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.resetHour) private var resetHour = Defaults.resetHour
     @AppStorage(SettingsKey.displayMode) private var displayMode = DisplayMode.costAndPercent.rawValue
     @AppStorage(SettingsKey.customDataDir) private var customDataDir = ""
+    @AppStorage(SettingsKey.showPlanUsage) private var showPlanUsage = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
@@ -155,6 +263,8 @@ struct SettingsView: View {
             }
             TextField("Data folder", text: $customDataDir, prompt: Text("~/.claude (default)"))
                 .onSubmit { store.refresh() }
+            Toggle("Show Claude plan usage", isOn: $showPlanUsage)
+                .help("Reads Claude Code's login to fetch your monthly spend and plan limits from Claude.")
             Toggle("Launch at login", isOn: $launchAtLogin)
             if let loginError {
                 Text(loginError).font(.caption).foregroundStyle(.red)
@@ -162,6 +272,7 @@ struct SettingsView: View {
         }
         .controlSize(.small)
         .onChange(of: resetHour) { _ in store.refresh() }
+        .onChange(of: showPlanUsage) { _ in store.refreshPlan(force: true) }
         .onChange(of: launchAtLogin) { enabled in
             do {
                 if enabled {

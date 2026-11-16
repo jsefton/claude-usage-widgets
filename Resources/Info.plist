@@ -8,6 +8,8 @@
     <string>Claude Usage</string>
     <key>CFBundleIdentifier</key>
     <string>com.claude-usage-widgets.ClaudeUsageBar</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleExecutable</key>
     <string>ClaudeUsageBar</string>
     <key>CFBundlePackageType</key>
