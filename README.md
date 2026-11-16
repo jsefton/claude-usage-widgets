@@ -12,9 +12,18 @@ $12.34 · 25%
 
 Click the item to open a panel showing the cost, a progress bar against the budget, your Claude plan's monthly spend and limits, token counts (input, output, cache write and cache read), a cost breakdown per model, and the settings.
 
-<p align="center">
-  <img src="docs/screenshot.png" alt="The Claude Usage menu bar item and its open panel, showing today's cost, budget progress, token counts and settings" width="319">
-</p>
+<table align="center">
+  <tr>
+    <td valign="top" align="center">
+      <img src="docs/screenshot-enterprise.png" alt="The panel on an Enterprise account: today's cost against a $25 daily budget, and a monthly spend of US$15.11 of a US$500.00 limit" width="320"><br>
+      <sub>Enterprise: monthly spend limit</sub>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshot-max.png" alt="The panel on a Max account: today's cost, the usage-credits cap, and the 5-hour session and weekly limits with reset times" width="320"><br>
+      <sub>Max: usage credits and plan limits</sub>
+    </td>
+  </tr>
+</table>
 
 ## Where the numbers come from
 
