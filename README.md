@@ -1,100 +1,59 @@
-# Claude Usage – macOS menu bar widget
+# Claude Usage
 
-A small menu bar app that shows how much you've spent on Claude today, for example:
+**See what your Claude Code usage is worth today, at a glance, in the macOS menu bar or on the Windows desktop.**
 
 ```
 $12.34 · 25%
 ```
 
-- **Cost** is the dollar cost of today's Claude Code usage at Anthropic API list prices.
-- **%** is that cost as a share of a daily budget you set (default $25).
-- **Today** runs from **8:00 AM to 8:00 AM** local time, so the counter goes back to $0.00 at 8 AM each morning. You can change the hour.
-
-Click the item to open a panel showing the cost, a progress bar against the budget, your Claude plan's monthly spend and limits, token counts (input, output, cache write and cache read), a cost breakdown per model, and the settings.
+Today's cost at Anthropic API list prices, and how much of your daily budget that is, always in view. Click it for the full picture: your Claude plan's limits, token counts and the cost per model.
 
 <table align="center">
   <tr>
     <td valign="top" align="center">
-      <img src="docs/screenshot-enterprise.png" alt="The panel on an Enterprise account: today's cost against a $25 daily budget, and a monthly spend of US$15.11 of a US$500.00 limit" width="320"><br>
-      <sub>Enterprise: monthly spend limit</sub>
+      <img src="docs/screenshot-max.png" alt="The macOS panel on a Max account: today's cost, the usage-credits cap, and the 5-hour session and weekly limits with reset times" width="280"><br>
+      <sub><b>macOS</b> · Max plan</sub>
     </td>
     <td valign="top" align="center">
-      <img src="docs/screenshot-max.png" alt="The panel on a Max account: today's cost, the usage-credits cap, and the 5-hour session and weekly limits with reset times" width="320"><br>
-      <sub>Max: usage credits and plan limits</sub>
+      <img src="docs/screenshot-enterprise.png" alt="The macOS panel on an Enterprise account: today's cost against a $25 daily budget, and a monthly spend of US$15.11 of a US$500.00 limit" width="280"><br>
+      <sub><b>macOS</b> · Enterprise plan</sub>
+    </td>
+    <td valign="top" align="center">
+      <img src="docs/screenshot-windows.png" alt="The Windows panel in dark mode: $18.67 today (75% of a $25 daily budget), the Claude plan's monthly spend and 5-hour and weekly limits, token counts and cost per model" width="280"><br>
+      <sub><b>Windows</b> · dark mode</sub>
     </td>
   </tr>
 </table>
 
-## Where the numbers come from
+## Get it
 
-Claude Code writes a transcript of every session to `~/.claude/projects/**/*.jsonl`. Each assistant message in those files records its token usage (input, output, 5-minute and 1-hour cache writes, cache reads, model, and fast mode). The app:
+| | Lives in | Needs | Setup |
+|---|---|---|---|
+| **macOS** | The menu bar | macOS 13+ and the Swift tools | [mac/README.md](mac/README.md) |
+| **Windows** | The tray, plus a small floating widget | Windows 10/11 and .NET 10 | [windows/README.md](windows/README.md) |
 
-1. reads the transcripts changed since the current period began (subagent logs included),
-2. drops duplicate copies of a response (Claude Code logs a response more than once while it streams),
-3. prices each response from the table in `Sources/UsageCore/Pricing.swift`, and adds them up.
+## What it shows
 
-The daily total is worked out entirely on your Mac. It refreshes every 60 seconds and whenever you open the panel.
+- **Today's cost and budget %**: `$12.34 · 25%` in the menu bar (macOS) or a floating widget and tray badge (Windows). It turns orange at 75% of your budget and red at 100%.
+- **A working day, not a calendar day**: the total resets at 8 AM (or the hour you choose), so a late night counts towards the day it started.
+- **Your Claude plan**: monthly spend against your cap (Enterprise spend limit, or usage credits on Pro and Max), and the 5-hour session and weekly limits with their reset times. These are the same figures as Claude Code's `/usage` screen.
+- **Where it went**: requests, input and output tokens, cache writes and reads, and the cost per model.
+- **Light and dark**: follows your system theme.
 
-> **Note:** The figure is what this usage *would* cost at API list prices. On a Pro or Max subscription you aren't billed per token, so treat it as the value of your usage. Prices were last checked in November 2026; update `Pricing.swift` when they change. Responses from models missing from the table appear as "Unpriced" and add $0.
+## How it works
 
-## Claude plan usage (monthly spend and limits)
+Claude Code keeps a transcript of every session on your machine. The app reads those logs, drops the duplicate entries Claude Code writes while a response streams, and prices each response from Anthropic's published list prices. The daily total never leaves your computer.
 
-The **Claude plan** section shows usage as Claude itself reports it for the account you're signed in to in Claude Code:
+The plan section uses the login Claude Code has already saved to ask Claude for your account's usage. That one request goes only to `api.anthropic.com`; the token is never stored, logged or refreshed. Turn the section off and the app makes no network requests at all.
 
-- **Monthly spend**: what you've spent this period against your monthly cap, in your billing currency. On an Enterprise plan this is your spend limit; on Pro or Max it is the usage-credits cap. The reset date appears when Claude reports one.
-- **Plan limits**: the 5-hour session and weekly limits (and any per-model ones), each with its reset time.
+> The dollar figure is what your usage *would* cost at API list prices. On a Pro or Max subscription you aren't billed per token, so read it as the value you're getting.
 
-These figures cover all your Claude usage on every device, unlike the daily total, which only counts Claude Code on this Mac.
-
-How it works: the app reads Claude Code's saved login from the macOS Keychain (via `/usr/bin/security`, the same way Claude Code reads it) and calls `https://api.anthropic.com/api/oauth/usage`, the endpoint behind Claude Code's `/usage` screen, about every 5 minutes. The token is sent only to api.anthropic.com and is never stored or logged. The app never refreshes the token. If the login has expired, the panel asks you to use Claude Code, which renews it.
-
-> **Note:** That endpoint is undocumented and may change without notice. If it does, the section shows an error and the rest of the app keeps working. You can turn the section off in Settings ("Show Claude plan usage"); with it off, the app makes no network requests.
-
-## Requirements
-
-- macOS 13 Ventura or later
-- Xcode 15+ or the Swift 5.9+ command line tools (`xcode-select --install`)
-
-## Build and run
-
-```bash
-# Quick run from the terminal (no .app bundle; "Launch at login" won't work this way)
-swift run ClaudeUsageBar
-
-# Build a proper menu-bar-only app at build/Claude Usage.app
-scripts/build-app.sh
-
-# ...or build it, copy it to /Applications, and launch it
-scripts/build-app.sh --install
-```
-
-You can also open `Package.swift` in Xcode and run the `ClaudeUsageBar` scheme.
-
-The app icon is drawn by `scripts/make-icon.swift`. After changing the design, run `scripts/make-icon.sh` to regenerate `Resources/AppIcon.icns`.
-
-Run the tests (they cover pricing, the 8 AM day window and log parsing):
-
-```bash
-swift test
-```
-
-## Settings (in the panel)
-
-| Setting | Default | Notes |
-|---|---|---|
-| Daily budget ($) | 25 | The amount that counts as 100%. The bar turns orange at 75% and red at 100%. |
-| Day starts at | 8:00 AM | The hour the daily total resets to zero. |
-| Menu bar shows | Cost and % | Or cost only, or % only. |
-| Data folder | `~/.claude` and `~/.config/claude` | Comma-separated list of Claude config folders, if you use `CLAUDE_CONFIG_DIR`. |
-| Show Claude plan usage | on | Fetches monthly spend and plan limits from Claude using Claude Code's login. Turn off for no network access. |
-| Launch at login | off | Needs the `.app` bundle from `scripts/build-app.sh`. |
-
-## Project layout
+## Repository layout
 
 ```
-Sources/UsageCore/        Foundation-only logic (pricing, day window, log scanning). Unit tested.
-Sources/ClaudeUsageBar/   SwiftUI MenuBarExtra app.
-Tests/UsageCoreTests/     XCTest suite for UsageCore.
-Resources/Info.plist      Bundle metadata (LSUIElement = menu bar only, no Dock icon).
-scripts/build-app.sh      Builds a release binary and wraps it in an ad-hoc signed .app.
+mac/        The macOS menu bar app (Swift, SwiftUI). Setup: mac/README.md
+windows/    The Windows tray app (C#, .NET 10, WPF). Setup: windows/README.md
+docs/       Screenshots.
 ```
+
+Each app has its own copy of the core logic (log scanning, pricing, the day window and the plan-usage parser) with the same tests. When prices change, update both `Pricing` files.
