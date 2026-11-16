@@ -12,6 +12,10 @@ $12.34 · 25%
 
 Click the item to open a panel showing the cost, a progress bar against the budget, token counts (input, output, cache write and cache read), a cost breakdown per model, and the settings.
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="The Claude Usage menu bar item and its open panel, showing today's cost, budget progress, token counts and settings" width="319">
+</p>
+
 ## Where the numbers come from
 
 Claude Code writes a transcript of every session to `~/.claude/projects/**/*.jsonl`. Each assistant message in those files records its token usage (input, output, 5-minute and 1-hour cache writes, cache reads, model, and fast mode). The app:
