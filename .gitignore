@@ -1,6 +1,14 @@
+# macOS / Swift
 .build/
 build/
 *.xcodeproj/
 .swiftpm/
 DerivedData/
 .DS_Store
+
+# Windows / .NET
+bin/
+obj/
+.vs/
+*.user
+TestResults/

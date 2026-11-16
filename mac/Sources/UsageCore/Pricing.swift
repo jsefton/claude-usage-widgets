@@ -63,6 +63,7 @@ public struct TokenUsage: Equatable, Sendable {
 ///
 /// Prices last checked November 2026. Matching is by substring on the model id, first match wins,
 /// so more specific ids must come before their prefixes (e.g. `opus-5-5` before `opus-5`).
+/// Keep in sync with windows/src/UsageCore/Pricing.cs (the Windows app).
 public enum Pricing {
     public static let table: [(match: String, price: ModelPrice)] = [
         // Fable / Mythos

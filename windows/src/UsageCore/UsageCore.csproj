@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Platform-neutral logic (pricing, day window, log scanning, plan usage). No Windows APIs. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>UsageCore</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="UsageCore.Tests" />
+  </ItemGroup>
+
+</Project>
