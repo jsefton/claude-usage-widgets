@@ -10,10 +10,14 @@ import Foundation
 public struct PlanUsage: Equatable, Sendable {
     public var monthly: MonthlySpend?
     public var limits: [PlanLimit]
+    /// The login's plan from Claude Code's saved credentials, e.g. "max" or "enterprise".
+    /// Not part of the usage response; set by whoever fetched it.
+    public var subscriptionType: String?
 
-    public init(monthly: MonthlySpend?, limits: [PlanLimit]) {
+    public init(monthly: MonthlySpend?, limits: [PlanLimit], subscriptionType: String? = nil) {
         self.monthly = monthly
         self.limits = limits
+        self.subscriptionType = subscriptionType
     }
 }
 

@@ -197,7 +197,12 @@ public partial class FlyoutWindow : Window
 
         if (store.Plan is { } plan)
         {
-            if (plan.Monthly is { } monthly) PlanRows.Children.Add(MonthlyRow(monthly));
+            if (plan.Monthly is { } monthly)
+            {
+                var forecast = plan.Forecast(settings.MonthlyResetDay, DateTime.Now);
+                PlanRows.Children.Add(MonthlyRow(monthly, forecast));
+                if (forecast is not null && monthly.Limit is not null) PlanRows.Children.Add(ForecastRows(forecast, monthly));
+            }
             foreach (var limit in plan.Limits)
             {
                 PlanRows.Children.Add(MeterRow(
@@ -229,17 +234,64 @@ public partial class FlyoutWindow : Window
         }
     }
 
-    FrameworkElement MonthlyRow(MonthlySpend monthly)
+    FrameworkElement MonthlyRow(MonthlySpend monthly, MonthlyForecast? forecast)
     {
         var used = Format.Money(monthly.Used, monthly.Currency, monthly.DecimalPlaces);
         var value = monthly.Limit is { } limit
             ? $"{used} of {Format.Money(limit, monthly.Currency, monthly.DecimalPlaces)}"
             : used;
         var notes = new List<string>();
-        if (monthly.ResetsAt is { } resets) notes.Add($"Resets {Format.Reset(resets)}");
+        if (forecast is not null) notes.Add($"Resets {Format.Day(forecast.ResetsAt)}");
+        else if (monthly.ResetsAt is { } resets) notes.Add($"Resets {Format.Reset(resets)}");
         if (!monthly.IsEnabled) notes.Add(monthly.DisabledReason == "out_of_credits" ? "Off: out of credits" : "Off");
         return MeterRow("Monthly spend", value, monthly.Percent, monthly.Severity,
                         notes.Count == 0 ? null : string.Join(" · ", notes), showsPercent: true);
+    }
+
+    /// <summary>Enterprise spend limits: whether the current pace stays under the limit, and what's left per working day.</summary>
+    FrameworkElement ForecastRows(MonthlyForecast forecast, MonthlySpend monthly)
+    {
+        string Money(double value) => Format.Money(value, monthly.Currency, monthly.DecimalPlaces);
+
+        var projected = Money(forecast.Projected);
+        var (outlook, outlookColor) = forecast.Status switch
+        {
+            ForecastStatus.OnTrack => ($"On track · about {projected}", Palette.Good),
+            ForecastStatus.Close => ($"Close to limit · about {projected}", Palette.Warning),
+            _ => ($"Over by about {Money(forecast.ProjectedOver)}", Palette.Critical),
+        };
+        var days = forecast.WorkingDaysLeft;
+        var perDay = forecast.PerWorkingDay is { } amount
+            ? $"{Money(amount)} · {days} working day{(days == 1 ? "" : "s")} left"
+            : "No working days left";
+
+        var grid = new Grid
+        {
+            Margin = new Thickness(0, -4, 0, 10),
+            ToolTip = $"Forecast: spend so far, plus the average per working day (Mon–Fri) so far for each working day "
+                      + $"left until {Format.Day(forecast.ResetsAt)}. Per working day: the {Money(forecast.Remaining)} left, "
+                      + "spread over the working days from today until the reset.",
+        };
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        AddRow(grid, "Forecast", outlook, outlookColor);
+        AddRow(grid, "Per working day", perDay, null);
+        return grid;
+
+        void AddRow(Grid target, string label, string value, string? valueColor)
+        {
+            var index = target.RowDefinitions.Count;
+            target.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            var caption = (Style)FindResource("Caption");
+            var labelText = new TextBlock { Text = label, Style = caption, Margin = new Thickness(0, 0, 12, 2) };
+            var valueText = new TextBlock { Text = value, Style = caption, Margin = new Thickness(0, 0, 0, 2) };
+            valueText.SetResourceReference(TextBlock.ForegroundProperty, valueColor ?? Palette.Text);
+            Grid.SetRow(labelText, index);
+            Grid.SetRow(valueText, index);
+            Grid.SetColumn(valueText, 1);
+            target.Children.Add(labelText);
+            target.Children.Add(valueText);
+        }
     }
 
     FrameworkElement MeterRow(string title, string value, double? percent, string? severity, string? footnote,

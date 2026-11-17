@@ -29,6 +29,7 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
     <TextBlock Grid.Row="0" Text="Daily budget ($)" Style="{StaticResource Label}" />
@@ -53,8 +54,11 @@
     <CheckBox Grid.Row="6" Grid.ColumnSpan="2" x:Name="ShowPillBox" Content="Show floating widget" Margin="0,2" />
     <CheckBox Grid.Row="7" Grid.ColumnSpan="2" x:Name="ShowPlanBox" Content="Show Claude plan usage" Margin="0,2"
               ToolTip="Reads Claude Code's login to fetch your monthly spend and plan limits from Claude." />
-    <CheckBox Grid.Row="8" Grid.ColumnSpan="2" x:Name="LaunchAtLoginBox" Content="Launch at login" Margin="0,2" />
-    <TextBlock Grid.Row="9" Grid.ColumnSpan="2" x:Name="LoginError" Style="{StaticResource Hint}"
+    <TextBlock Grid.Row="8" Text="Month resets on" Style="{StaticResource Label}" />
+    <ComboBox Grid.Row="8" Grid.Column="1" x:Name="MonthlyResetDayBox" Width="96" HorizontalAlignment="Left" Margin="0,4"
+              ToolTip="Day of the month your Enterprise monthly spend limit resets. Used for the reset date and forecast." />
+    <CheckBox Grid.Row="9" Grid.ColumnSpan="2" x:Name="LaunchAtLoginBox" Content="Launch at login" Margin="0,2" />
+    <TextBlock Grid.Row="10" Grid.ColumnSpan="2" x:Name="LoginError" Style="{StaticResource Hint}"
                Foreground="{DynamicResource StatusCritical}" Visibility="Collapsed" />
   </Grid>
 </UserControl>

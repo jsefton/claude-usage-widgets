@@ -33,7 +33,7 @@ static class ClaudeAccount
 
     public static async Task<PlanUsage> FetchPlanUsageAsync(IEnumerable<string> roots)
     {
-        var token = AccessToken(roots);
+        var (token, subscriptionType) = Login(roots);
         using var request = new HttpRequestMessage(HttpMethod.Get, Endpoint);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Headers.Add("anthropic-beta", "oauth-2025-04-20");
@@ -63,17 +63,22 @@ static class ClaudeAccount
                 default: throw FetchException.Network($"HTTP {(int)response.StatusCode}");
             }
             var body = await response.Content.ReadAsByteArrayAsync();
-            return PlanUsage.Parse(body) ?? throw FetchException.BadResponse();
+            var usage = PlanUsage.Parse(body) ?? throw FetchException.BadResponse();
+            return usage with { SubscriptionType = subscriptionType };
         }
     }
 
-    /// <summary>Returns Claude Code's current access token, or throws if there isn't a usable one.</summary>
-    static string AccessToken(IEnumerable<string> roots)
+    /// <summary>
+    /// Returns Claude Code's current access token and plan (e.g. "max", "enterprise"),
+    /// or throws if there isn't a usable token.
+    /// </summary>
+    static (string Token, string? SubscriptionType) Login(IEnumerable<string> roots)
     {
         foreach (var file in CredentialFiles(roots))
         {
             string? token;
             double? expiresAt;
+            string? subscriptionType;
             try
             {
                 using var document = JsonDocument.Parse(File.ReadAllBytes(file));
@@ -88,6 +93,9 @@ static class ClaudeAccount
                 expiresAt = oauth.TryGetProperty("expiresAt", out var e) && e.ValueKind == JsonValueKind.Number
                     ? e.GetDouble()
                     : null;
+                subscriptionType = oauth.TryGetProperty("subscriptionType", out var plan) && plan.ValueKind == JsonValueKind.String
+                    ? plan.GetString()
+                    : null;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
             {
@@ -99,7 +107,7 @@ static class ClaudeAccount
             {
                 throw FetchException.Expired();
             }
-            return token;
+            return (token, subscriptionType);
         }
         throw FetchException.NotSignedIn();
     }

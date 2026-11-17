@@ -16,6 +16,30 @@ namespace UsageCore;
 /// </remarks>
 public sealed record PlanUsage(MonthlySpend? Monthly, IReadOnlyList<PlanLimit> Limits)
 {
+    /// <summary>
+    /// The login's plan from Claude Code's saved credentials, e.g. "max" or "enterprise".
+    /// Not part of the usage response; set by whoever fetched it.
+    /// </summary>
+    public string? SubscriptionType { get; init; }
+
+    /// <summary>Personal plans whose monthly figure is a usage-credits cap, not an organisation spend limit.</summary>
+    static readonly HashSet<string> PersonalPlans = new(StringComparer.OrdinalIgnoreCase) { "free", "pro", "max" };
+
+    /// <summary>
+    /// True when the monthly figure is a spend limit set for the account (Enterprise and other
+    /// organisation plans), so a reset date and forecast make sense.
+    /// </summary>
+    public bool HasMonthlySpendLimit =>
+        Monthly is { Limit: > 0, IsEnabled: true }
+        && (SubscriptionType is null || !PersonalPlans.Contains(SubscriptionType));
+
+    /// <summary>The forecast for the monthly spend limit, when the account has one.</summary>
+    /// <param name="now">The current local time.</param>
+    public MonthlyForecast? Forecast(int resetDay, DateTime now) =>
+        HasMonthlySpendLimit && Monthly is { Limit: { } limit } monthly
+            ? MonthlyForecast.Make(monthly.Used, limit, resetDay, now)
+            : null;
+
     public static PlanUsage? Parse(string json) => Parse(Encoding.UTF8.GetBytes(json));
 
     /// <summary>Parses the usage endpoint's JSON body. Returns null only when the body isn't a JSON object.</summary>

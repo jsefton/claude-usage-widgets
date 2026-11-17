@@ -29,7 +29,7 @@ enum ClaudeAccount {
     private static let endpoint = URL(string: "https://api.anthropic.com/api/oauth/usage")!
 
     static func fetchPlanUsage() async throws -> PlanUsage {
-        let token = try accessToken()
+        let (token, subscriptionType) = try login()
         var request = URLRequest(url: endpoint, timeoutInterval: 15)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
@@ -49,12 +49,14 @@ enum ClaudeAccount {
         case 401, 403: throw FetchError.rejected
         default: throw FetchError.network("HTTP \(http.statusCode)")
         }
-        guard let usage = PlanUsage.parse(data) else { throw FetchError.badResponse }
+        guard var usage = PlanUsage.parse(data) else { throw FetchError.badResponse }
+        usage.subscriptionType = subscriptionType
         return usage
     }
 
-    /// Returns Claude Code's current access token, or throws if there isn't a usable one.
-    private static func accessToken() throws -> String {
+    /// Returns Claude Code's current access token and plan (e.g. "max", "enterprise"),
+    /// or throws if there isn't a usable token.
+    private static func login() throws -> (token: String, subscriptionType: String?) {
         guard let json = keychainCredentials() ?? fileCredentials(),
               let object = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
               let oauth = object["claudeAiOauth"] as? [String: Any],
@@ -65,7 +67,7 @@ enum ClaudeAccount {
            Date(timeIntervalSince1970: expiresAt / 1000) <= Date() {
             throw FetchError.expired
         }
-        return token
+        return (token, oauth["subscriptionType"] as? String)
     }
 
     private static func keychainCredentials() -> Data? {

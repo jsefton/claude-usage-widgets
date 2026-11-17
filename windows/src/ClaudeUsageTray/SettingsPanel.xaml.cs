@@ -22,6 +22,7 @@ public partial class SettingsPanel : UserControl
         settings = appSettings;
 
         for (var hour = 0; hour < 24; hour++) ResetHourBox.Items.Add(Format.Hour(hour));
+        for (var day = 1; day <= 31; day++) MonthlyResetDayBox.Items.Add(Format.Ordinal(day));
         TrayShowsBox.Items.Add("Percent used");
         TrayShowsBox.Items.Add("Dollars spent");
         PillShowsBox.Items.Add("Cost and %");
@@ -43,6 +44,7 @@ public partial class SettingsPanel : UserControl
         };
 
         ResetHourBox.SelectionChanged += (_, _) => Change(s => s.ResetHour = Math.Max(ResetHourBox.SelectedIndex, 0));
+        MonthlyResetDayBox.SelectionChanged += (_, _) => Change(s => s.MonthlyResetDay = Math.Max(MonthlyResetDayBox.SelectedIndex, 0) + 1);
         TrayShowsBox.SelectionChanged += (_, _) => Change(s => s.TrayShows = (TrayBadge)Math.Max(TrayShowsBox.SelectedIndex, 0));
         PillShowsBox.SelectionChanged += (_, _) => Change(s => s.PillShows = (DisplayMode)Math.Max(PillShowsBox.SelectedIndex, 0));
         // Checked/Unchecked rather than Click: Click isn't raised when assistive tech toggles a checkbox.
@@ -68,6 +70,7 @@ public partial class SettingsPanel : UserControl
             if (!BudgetBox.IsKeyboardFocusWithin) BudgetBox.Text = settings.DailyBudget.ToString("0.##", CultureInfo.CurrentCulture);
             if (!DataDirBox.IsKeyboardFocusWithin) DataDirBox.Text = settings.CustomDataDir;
             ResetHourBox.SelectedIndex = settings.ResetHour;
+            MonthlyResetDayBox.SelectedIndex = settings.MonthlyResetDay - 1;
             TrayShowsBox.SelectedIndex = (int)settings.TrayShows;
             PillShowsBox.SelectedIndex = (int)settings.PillShows;
             ShowPillBox.IsChecked = settings.ShowPill;

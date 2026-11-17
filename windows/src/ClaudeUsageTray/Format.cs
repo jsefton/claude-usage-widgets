@@ -53,6 +53,22 @@ static class Format
             : local.ToString("ddd d MMM", Culture);
     }
 
+    /// <summary>"Mon 1 Dec".</summary>
+    public static string Day(DateTime date) => date.ToString("ddd d MMM", Culture);
+
+    /// <summary>"1st", "2nd", "23rd".</summary>
+    public static string Ordinal(int value)
+    {
+        var suffix = (value % 100) is 11 or 12 or 13 ? "th" : (value % 10) switch
+        {
+            1 => "st",
+            2 => "nd",
+            3 => "rd",
+            _ => "th",
+        };
+        return value.ToString(CultureInfo.InvariantCulture) + suffix;
+    }
+
     public static string Time(DateTimeOffset date) => date.ToLocalTime().ToString("t", Culture);
 
     /// <summary>"16 Nov, 08:00".</summary>

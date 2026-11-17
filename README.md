@@ -37,6 +37,7 @@ Today's cost at Anthropic API list prices, and how much of your daily budget tha
 - **Today's cost and budget %**: `$12.34 · 25%` in the menu bar (macOS) or a floating widget and tray badge (Windows). It turns orange at 75% of your budget and red at 100%.
 - **A working day, not a calendar day**: the total resets at 8 AM (or the hour you choose), so a late night counts towards the day it started.
 - **Your Claude plan**: monthly spend against your cap (Enterprise spend limit, or usage credits on Pro and Max), and the 5-hour session and weekly limits with their reset times. These are the same figures as Claude Code's `/usage` screen.
+- **Enterprise forecast**: with a monthly spend limit, the reset date (set in Settings), whether you're on track to stay under the limit, and how much you can spend per working day (Monday to Friday) until it resets.
 - **Where it went**: requests, input and output tokens, cache writes and reads, and the cost per model.
 - **Light and dark**: follows your system theme.
 

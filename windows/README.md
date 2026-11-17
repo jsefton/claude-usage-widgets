@@ -72,6 +72,7 @@ Settings are saved to `%APPDATA%\ClaudeUsage\settings.json`.
 | Data folder | `%USERPROFILE%\.claude` and `%USERPROFILE%\.config\claude` | Comma-separated list of Claude config folders, if you use `CLAUDE_CONFIG_DIR`. |
 | Show floating widget | on | Hidden automatically while a full-screen app (game, video, presentation) is in front. |
 | Show Claude plan usage | on | Fetches monthly spend and plan limits from Claude using Claude Code's login. Turn off for no network access. |
+| Month resets on | 1st | The day of the month an Enterprise monthly spend limit resets. Used for the reset date and forecast. |
 | Launch at login | off | Adds the app to `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Turn it on from the installed copy (`scripts\build.cmd -Install`). |
 
 ## Where the numbers come from
@@ -94,6 +95,16 @@ The **Claude plan** section shows usage as Claude itself reports it for the acco
 - **Plan limits**: the 5-hour session and weekly limits (and any per-model ones), each with its reset time.
 
 These figures cover all your Claude usage on every device, not just Claude Code on this PC.
+
+### Enterprise: reset date and forecast
+
+When your account has a monthly spend limit (Enterprise and other organisation plans, not the usage-credits cap on Pro or Max), the monthly row also shows:
+
+- **Resets**: the next reset date. It comes from **Month resets on** in Settings (default the 1st). A day past the end of a short month counts as the month's last day, so the 31st resets on 30 November.
+- **Forecast**: where your spend will be at the reset if you keep up your average so far. That average is the spend so far divided by the working days (Monday to Friday) since the last reset, today included. It reads "On track" up to 90% of the limit, "Close to limit" up to 100%, and "Over by about …" beyond that.
+- **Per working day**: what you can spend each working day until the reset without going over: the amount left, divided by the working days from today up to the reset day (not counting the reset day itself).
+
+Working days are Monday to Friday. Public holidays aren't taken into account.
 
 How it works: on Windows, Claude Code saves its login in `%USERPROFILE%\.claude\.credentials.json` (or in `CLAUDE_CONFIG_DIR`). The app reads the access token from there and calls `https://api.anthropic.com/api/oauth/usage` about every 5 minutes. That endpoint is the one behind Claude Code's `/usage` screen. The token is sent only to api.anthropic.com and is never stored or logged. The app never refreshes the token. If the login has expired, the panel asks you to use Claude Code, which renews it.
 

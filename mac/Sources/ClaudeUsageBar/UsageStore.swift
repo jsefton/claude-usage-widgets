@@ -8,11 +8,14 @@ enum SettingsKey {
     static let displayMode = "displayMode"
     static let customDataDir = "customDataDir"
     static let showPlanUsage = "showPlanUsage"
+    static let monthlyResetDay = "monthlyResetDay"
 }
 
 enum Defaults {
     static let dailyBudget = 25.0
     static let resetHour = 8
+    /// Day of the month an Enterprise monthly spend limit resets.
+    static let monthlyResetDay = 1
 }
 
 /// What the menu bar text shows.
@@ -146,6 +149,18 @@ enum Format {
         value.formatted(
             .currency(code: currency).precision(.fractionLength(decimalPlaces))
         )
+    }
+
+    /// "Mon 1 Dec".
+    static func day(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+    }
+
+    /// "1st", "2nd", "23rd".
+    static func ordinal(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .ordinal
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
     /// "20:30" for times in the next 24 hours, otherwise "Wed 18 Nov".

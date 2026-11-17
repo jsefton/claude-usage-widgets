@@ -9,6 +9,7 @@ struct MenuContentView: View {
     @AppStorage(SettingsKey.dailyBudget) private var dailyBudget = Defaults.dailyBudget
     @AppStorage(SettingsKey.resetHour) private var resetHour = Defaults.resetHour
     @AppStorage(SettingsKey.showPlanUsage) private var showPlanUsage = true
+    @AppStorage(SettingsKey.monthlyResetDay) private var monthlyResetDay = Defaults.monthlyResetDay
     @State private var showSettings = false
 
     var body: some View {
@@ -93,7 +94,11 @@ struct MenuContentView: View {
             Text("Claude plan").font(.caption).foregroundStyle(.secondary)
             if let plan = store.plan {
                 if let monthly = plan.monthly {
-                    monthlyRow(monthly)
+                    let forecast = plan.monthlyForecast(resetDay: monthlyResetDay)
+                    monthlyRow(monthly, forecast: forecast)
+                    if let forecast, let limit = monthly.limit {
+                        forecastRows(forecast, monthly: monthly, limit: limit)
+                    }
                 }
                 ForEach(plan.limits) { limit in
                     meterRow(
@@ -120,7 +125,7 @@ struct MenuContentView: View {
         }
     }
 
-    private func monthlyRow(_ monthly: MonthlySpend) -> some View {
+    private func monthlyRow(_ monthly: MonthlySpend, forecast: MonthlyForecast?) -> some View {
         let used = Format.money(monthly.used, currency: monthly.currency, decimalPlaces: monthly.decimalPlaces)
         let value: String
         if let limit = monthly.limit {
@@ -129,7 +134,11 @@ struct MenuContentView: View {
             value = used
         }
         var notes: [String] = []
-        if let resets = monthly.resetsAt { notes.append("Resets \(Format.reset(resets))") }
+        if let forecast {
+            notes.append("Resets \(Format.day(forecast.resetsAt))")
+        } else if let resets = monthly.resetsAt {
+            notes.append("Resets \(Format.reset(resets))")
+        }
         if !monthly.isEnabled {
             notes.append(monthly.disabledReason == "out_of_credits" ? "Off: out of credits" : "Off")
         }
@@ -141,6 +150,47 @@ struct MenuContentView: View {
             footnote: notes.isEmpty ? nil : notes.joined(separator: " · "),
             showsPercent: true
         )
+    }
+
+    /// Enterprise spend limits: whether the current pace stays under the limit, and what's left per working day.
+    private func forecastRows(_ forecast: MonthlyForecast, monthly: MonthlySpend, limit: Double) -> some View {
+        let money = { (value: Double) in
+            Format.money(value, currency: monthly.currency, decimalPlaces: monthly.decimalPlaces)
+        }
+        let projected = money(forecast.projected)
+        let outlook: String
+        let outlookColor: Color
+        switch forecast.status {
+        case .onTrack:
+            outlook = "On track · about \(projected)"
+            outlookColor = .green
+        case .close:
+            outlook = "Close to limit · about \(projected)"
+            outlookColor = .orange
+        case .over:
+            outlook = "Over by about \(money(forecast.projectedOver))"
+            outlookColor = .red
+        }
+        let days = forecast.workingDaysLeft
+        let perDay = forecast.perWorkingDay.map {
+            "\(money($0)) · \(days) working day\(days == 1 ? "" : "s") left"
+        } ?? "No working days left"
+
+        return Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 3) {
+            GridRow {
+                Text("Forecast").foregroundStyle(.secondary)
+                Text(outlook).foregroundStyle(outlookColor)
+            }
+            GridRow {
+                Text("Per working day").foregroundStyle(.secondary)
+                Text(perDay)
+            }
+        }
+        .font(.caption)
+        .monospacedDigit()
+        .help("Forecast: spend so far, plus the average per working day (Mon–Fri) so far for each working day "
+              + "left until \(Format.day(forecast.resetsAt)). Per working day: the \(money(forecast.remaining)) left, "
+              + "spread over the working days from today until the reset.")
     }
 
     private func meterRow(
@@ -249,6 +299,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.displayMode) private var displayMode = DisplayMode.costAndPercent.rawValue
     @AppStorage(SettingsKey.customDataDir) private var customDataDir = ""
     @AppStorage(SettingsKey.showPlanUsage) private var showPlanUsage = true
+    @AppStorage(SettingsKey.monthlyResetDay) private var monthlyResetDay = Defaults.monthlyResetDay
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
 
@@ -265,6 +316,10 @@ struct SettingsView: View {
                 .onSubmit { store.refresh() }
             Toggle("Show Claude plan usage", isOn: $showPlanUsage)
                 .help("Reads Claude Code's login to fetch your monthly spend and plan limits from Claude.")
+            Picker("Month resets on", selection: $monthlyResetDay) {
+                ForEach(1...31, id: \.self) { Text(Format.ordinal($0)).tag($0) }
+            }
+            .help("Day of the month your Enterprise monthly spend limit resets. Used for the reset date and forecast.")
             Toggle("Launch at login", isOn: $launchAtLogin)
             if let loginError {
                 Text(loginError).font(.caption).foregroundStyle(.red)

@@ -66,6 +66,7 @@ swift test
 | Menu bar shows | Cost and % | Or cost only, or % only. |
 | Data folder | `~/.claude` and `~/.config/claude` | Comma-separated list of Claude config folders, if you use `CLAUDE_CONFIG_DIR`. |
 | Show Claude plan usage | on | Fetches monthly spend and plan limits from Claude using Claude Code's login. Turn off for no network access. |
+| Month resets on | 1st | The day of the month an Enterprise monthly spend limit resets. Used for the reset date and forecast. |
 | Launch at login | off | Needs the `.app` bundle from `scripts/build-app.sh`. |
 
 ## Where the numbers come from
@@ -84,10 +85,20 @@ The daily total is worked out entirely on your Mac. It refreshes every 60 second
 
 The **Claude plan** section shows usage as Claude itself reports it for the account you're signed in to in Claude Code:
 
-- **Monthly spend**: what you've spent this period against your monthly cap, in your billing currency. On an Enterprise plan this is your spend limit; on Pro or Max it is the usage-credits cap. The reset date appears when Claude reports one.
+- **Monthly spend**: what you've spent this period against your monthly cap, in your billing currency. On an Enterprise plan this is your spend limit; on Pro or Max it is the usage-credits cap.
 - **Plan limits**: the 5-hour session and weekly limits (and any per-model ones), each with its reset time.
 
 These figures cover all your Claude usage on every device, unlike the daily total, which only counts Claude Code on this Mac.
+
+### Enterprise: reset date and forecast
+
+When your account has a monthly spend limit (Enterprise and other organisation plans, not the usage-credits cap on Pro or Max), the monthly row also shows:
+
+- **Resets**: the next reset date. It comes from **Month resets on** in Settings (default the 1st). A day past the end of a short month counts as the month's last day, so the 31st resets on 30 November.
+- **Forecast**: where your spend will be at the reset if you keep up your average so far. That average is the spend so far divided by the working days (Monday to Friday) since the last reset, today included. It reads "On track" up to 90% of the limit, "Close to limit" up to 100%, and "Over by about …" beyond that.
+- **Per working day**: what you can spend each working day until the reset without going over: the amount left, divided by the working days from today up to the reset day (not counting the reset day itself).
+
+Working days are Monday to Friday. Public holidays aren't taken into account.
 
 How it works: the app reads Claude Code's saved login from the macOS Keychain (via `/usr/bin/security`, the same way Claude Code reads it). It then calls `https://api.anthropic.com/api/oauth/usage` about every 5 minutes; that endpoint is the one behind Claude Code's `/usage` screen. The token is sent only to api.anthropic.com and is never stored or logged. The app never refreshes the token. If the login has expired, the panel asks you to use Claude Code, which renews it.
 

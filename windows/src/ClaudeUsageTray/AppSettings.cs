@@ -18,6 +18,7 @@ public sealed class AppSettings
 {
     public const double DefaultDailyBudget = 25;
     public const int DefaultResetHour = 8;
+    public const int DefaultMonthlyResetDay = 1;
 
     public double DailyBudget { get; set; } = DefaultDailyBudget;
     public int ResetHour { get; set; } = DefaultResetHour;
@@ -30,6 +31,8 @@ public sealed class AppSettings
     /// <summary>Comma-separated Claude config folders; empty means the defaults.</summary>
     public string CustomDataDir { get; set; } = "";
     public bool ShowPlanUsage { get; set; } = true;
+    /// <summary>Day of the month an Enterprise monthly spend limit resets (1–31).</summary>
+    public int MonthlyResetDay { get; set; } = DefaultMonthlyResetDay;
 
     public event EventHandler? Changed;
 
@@ -71,6 +74,7 @@ public sealed class AppSettings
     {
         if (!(DailyBudget > 0) || double.IsInfinity(DailyBudget)) DailyBudget = DefaultDailyBudget;
         ResetHour = Math.Clamp(ResetHour, 0, 23);
+        MonthlyResetDay = Math.Clamp(MonthlyResetDay, 1, 31);
         if (!Enum.IsDefined(PillShows)) PillShows = DisplayMode.CostAndPercent;
         if (!Enum.IsDefined(TrayShows)) TrayShows = TrayBadge.Percent;
         CustomDataDir ??= "";
